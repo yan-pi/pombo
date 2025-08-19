@@ -1,0 +1,25 @@
+# Example POMBO configuration
+# Copy this file to ~/.config/pombo/config.yaml and customize
+
+app:
+  cache_dir: ~/.cache/pombo
+  config_dir: ~/.config/pombo
+
+accounts:
+  - name: "work"
+    email: "user@company.com"
+    provider: "outlook"
+    oauth:
+      client_id: "your-client-id"
+      redirect_uri: "http://localhost:8080/callback"
+
+ui:
+  theme: "dark"
+  vim_keybindings: true
+  show_line_numbers: false
+
+security:
+  pgp:
+    auto_encrypt: false
+    auto_sign: false
+    keyring_path: "~/.gnupg"

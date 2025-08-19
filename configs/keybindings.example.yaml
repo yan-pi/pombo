@@ -1,0 +1,97 @@
+# Example POMBO keybindings configuration
+# Copy this file to ~/.config/pombo/keybindings.yaml and customize
+
+# Global keybindings (available in all views)
+global:
+  quit: "q"                    # Quit the application
+  help: "?"                    # Toggle help display
+  escape: "esc"                # Cancel/back action
+  
+# Navigation keybindings
+navigation:
+  up: ["k", "up"]              # Move cursor up
+  down: ["j", "down"]          # Move cursor down
+  left: ["h", "left"]          # Move cursor left
+  right: ["l", "right"]        # Move cursor right
+  page_up: ["ctrl+u", "page_up"]    # Page up
+  page_down: ["ctrl+d", "page_down"] # Page down
+  home: ["gg", "home"]         # Go to beginning
+  end: ["G", "end"]            # Go to end
+  
+# Mailbox view keybindings
+mailbox:
+  refresh: "r"                 # Refresh mailbox
+  sync_all: "R"                # Sync all accounts
+  next_account: "tab"          # Switch to next account
+  prev_account: "shift+tab"    # Switch to previous account
+  expand_folder: "space"       # Expand/collapse folder
+  
+# Message list keybindings
+message_list:
+  open: "enter"                # Open selected message
+  mark_read: "m"               # Toggle read status
+  mark_unread: "u"             # Mark as unread
+  star: "s"                    # Toggle star/flag
+  archive: "a"                 # Archive message
+  delete: "d"                  # Delete message
+  move: "M"                    # Move to folder
+  thread_expand: "t"           # Expand/collapse thread
+  select_all: "ctrl+a"         # Select all messages
+  
+# Message view keybindings
+message_view:
+  reply: "r"                   # Reply to sender
+  reply_all: "R"               # Reply to all
+  forward: "f"                 # Forward message
+  next_message: "n"            # Next message
+  prev_message: "p"            # Previous message
+  view_source: "v"             # View message source
+  view_headers: "H"            # View full headers
+  toggle_html: "ctrl+h"        # Toggle HTML/text view
+  download_attachment: "ctrl+s" # Download attachment
+  
+# Compose view keybindings
+compose:
+  send: "ctrl+enter"           # Send message
+  save_draft: "ctrl+s"         # Save as draft
+  attach_file: "ctrl+a"        # Attach file
+  toggle_encryption: "ctrl+e"  # Toggle PGP encryption
+  toggle_signature: "ctrl+g"   # Toggle PGP signature
+  add_recipient: "ctrl+t"      # Add To recipient
+  add_cc: "ctrl+c"             # Add CC recipient
+  add_bcc: "ctrl+b"            # Add BCC recipient
+  
+# Search keybindings
+search:
+  search: "/"                  # Start search
+  search_next: "n"             # Next search result
+  search_prev: "N"             # Previous search result
+  clear_search: "ctrl+l"       # Clear search
+  advanced_search: "ctrl+f"    # Advanced search dialog
+  
+# Vim-style command mode
+command_mode:
+  enter_command: ":"           # Enter command mode
+  
+# Common commands (when in command mode)
+commands:
+  quit: "q"                    # :q - quit
+  quit_force: "q!"             # :q! - quit without saving
+  save: "w"                    # :w - save (draft)
+  save_quit: "wq"              # :wq - save and quit
+  set: "set"                   # :set - change settings
+  help: "help"                 # :help - show help
+  
+# Settings view keybindings
+settings:
+  apply: "enter"               # Apply setting changes
+  reset: "ctrl+r"              # Reset to defaults
+  export: "ctrl+e"             # Export configuration
+  import: "ctrl+i"             # Import configuration
+
+# Advanced keybindings for power users
+advanced:
+  debug_mode: "ctrl+shift+d"   # Toggle debug mode
+  reload_config: "ctrl+shift+r" # Reload configuration
+  memory_stats: "ctrl+shift+m"  # Show memory statistics
+  connection_stats: "ctrl+shift+c" # Show connection status
