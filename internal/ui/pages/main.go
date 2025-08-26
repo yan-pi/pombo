@@ -3,6 +3,7 @@ package pages
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -10,6 +11,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 	"github.com/ybarbara/pombo/internal/config"
+	"github.com/ybarbara/pombo/internal/ui/models"
+	"github.com/ybarbara/pombo/internal/ui/services"
 	"github.com/ybarbara/pombo/internal/ui/styles"
 )
 
@@ -29,20 +32,25 @@ type MainModel struct {
 	config     *config.Config
 	logger     *log.Logger
 	
+	// Email service and model
+	emailService services.EmailService
+	emailModel   *models.EmailModel
+	
 	// UI state
-	currentView ViewState
-	width       int
-	height      int
+	currentView  ViewState
+	width        int
+	height       int
 	
 	// Components
-	help        help.Model
+	help         help.Model
 	
 	// Key bindings
-	keyMap      KeyMap
+	keyMap       KeyMap
 	
 	// Application state
-	ready       bool
-	quitting    bool
+	ready        bool
+	quitting     bool
+	serviceReady bool
 }
 
 // KeyMap defines the key bindings for the application
@@ -78,8 +86,8 @@ func (k KeyMap) FullHelp() [][]key.Binding {
 	}
 }
 
-// NewMainModel creates a new main model
-func NewMainModel(cfg *config.Config, logger *log.Logger) *MainModel {
+// NewMainModel creates a new main model with email service integration
+func NewMainModel(cfg *config.Config, logger *log.Logger, emailService services.EmailService) *MainModel {
 	// Initialize key bindings
 	keyMap := KeyMap{
 		Quit: key.NewBinding(
@@ -136,25 +144,37 @@ func NewMainModel(cfg *config.Config, logger *log.Logger) *MainModel {
 		),
 	}
 
+	// Create email model with service
+	emailModel := models.NewEmailModel(emailService, cfg, logger)
+
 	return &MainModel{
-		config:      cfg,
-		logger:      logger,
-		currentView: ViewWelcome,
-		help:        help.New(),
-		keyMap:      keyMap,
-		ready:       false,
-		quitting:    false,
+		config:       cfg,
+		logger:       logger,
+		emailService: emailService,
+		emailModel:   emailModel,
+		currentView:  ViewWelcome,
+		help:         help.New(),
+		keyMap:       keyMap,
+		ready:        false,
+		quitting:     false,
+		serviceReady: false,
 	}
 }
 
 // Init initializes the model
 func (m *MainModel) Init() tea.Cmd {
-	return nil
+	// Initialize email model first
+	emailCmd := m.emailModel.Init()
+	
+	return tea.Batch(
+		emailCmd,
+		m.checkServiceStatus(),
+	)
 }
 
 // Update handles messages and updates the model
 func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
+	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -165,9 +185,22 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Update help component size
 		m.help.Width = msg.Width
 		
+		// Update email model size
+		emailModel, emailCmd := m.emailModel.Update(msg)
+		m.emailModel = emailModel.(*models.EmailModel)
+		if emailCmd != nil {
+			cmds = append(cmds, emailCmd)
+		}
+		
+		return m, tea.Batch(cmds...)
+
+	case ServiceReadyMsg:
+		m.serviceReady = true
+		m.currentView = ViewMailbox // Switch to mailbox once service is ready
 		return m, nil
 
 	case tea.KeyMsg:
+		// Handle global keys first
 		switch {
 		case key.Matches(msg, m.keyMap.Quit):
 			m.quitting = true
@@ -176,14 +209,29 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.keyMap.Help):
 			m.help.ShowAll = !m.help.ShowAll
 			return m, nil
+		}
 
-		case key.Matches(msg, m.keyMap.Compose):
-			m.currentView = ViewCompose
-			return m, nil
+		// Delegate to email model if service is ready
+		if m.serviceReady {
+			emailModel, emailCmd := m.emailModel.Update(msg)
+			m.emailModel = emailModel.(*models.EmailModel)
+			if emailCmd != nil {
+				cmds = append(cmds, emailCmd)
+			}
+		}
+	
+	default:
+		// Always delegate other messages to email model
+		if m.serviceReady {
+			emailModel, emailCmd := m.emailModel.Update(msg)
+			m.emailModel = emailModel.(*models.EmailModel)
+			if emailCmd != nil {
+				cmds = append(cmds, emailCmd)
+			}
 		}
 	}
 
-	return m, cmd
+	return m, tea.Batch(cmds...)
 }
 
 // View renders the current view
@@ -196,25 +244,14 @@ func (m *MainModel) View() string {
 		return "Thanks for using POMBO! 📧"
 	}
 
-	var content string
-	
-	switch m.currentView {
-	case ViewWelcome:
-		content = m.renderWelcomeView()
-	case ViewMailbox:
-		content = m.renderMailboxView()
-	case ViewMessage:
-		content = m.renderMessageView()
-	case ViewCompose:
-		content = m.renderComposeView()
-	case ViewSettings:
-		content = m.renderSettingsView()
-	default:
-		content = m.renderWelcomeView()
+	// Show welcome screen until service is ready
+	if !m.serviceReady {
+		content := m.renderWelcomeView()
+		return m.renderLayout(content)
 	}
 
-	// Render the main layout
-	return m.renderLayout(content)
+	// Delegate to email model when service is ready
+	return m.emailModel.View()
 }
 
 // renderLayout renders the main application layout
@@ -284,6 +321,22 @@ func (m *MainModel) renderWelcomeView() string {
 		lipgloss.Center,
 		content,
 	)
+}
+
+// ServiceReadyMsg indicates that the email service is ready
+type ServiceReadyMsg struct{}
+
+// checkServiceStatus checks if the email service is ready
+func (m *MainModel) checkServiceStatus() tea.Cmd {
+	return func() tea.Msg {
+		if m.emailService.IsRunning() {
+			return ServiceReadyMsg{}
+		}
+		// Keep checking until service is ready
+		return tea.Tick(time.Second, func(time.Time) tea.Msg {
+			return m.checkServiceStatus()()
+		})
+	}
 }
 
 // renderMailboxView renders the mailbox list view

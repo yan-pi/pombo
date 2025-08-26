@@ -232,6 +232,27 @@ func WrapError(err error, errType ErrorType, code, message string, retryable boo
 	}
 }
 
+// NewSimpleEmailError creates a simple EmailError with just type and message
+func NewSimpleEmailError(errType ErrorType, message string) *EmailError {
+	return NewEmailError(errType, "", message, nil, false)
+}
+
+// WrapSimpleError wraps an error with just a message
+func WrapSimpleError(err error, message string) *EmailError {
+	if err == nil {
+		return nil
+	}
+	
+	// Try to preserve error type if it's already an EmailError
+	var emailErr *EmailError
+	if errors.As(err, &emailErr) {
+		return WrapError(err, emailErr.Type, "", message, emailErr.Retryable)
+	}
+	
+	// Default to client error for unknown errors
+	return WrapError(err, ErrorTypeClient, "", message, false)
+}
+
 // WithContext adds context information to an error
 func (e *EmailError) WithContext(account, folder, messageID, operation string) *EmailError {
 	return &EmailError{

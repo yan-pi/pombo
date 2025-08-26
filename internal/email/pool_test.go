@@ -191,53 +191,7 @@ func (m *MockEmailClient) SetConnected(connected bool) {
 	m.connected = connected
 }
 
-// MockClientFactory implements ClientFactory interface for testing
-type MockClientFactory struct {
-	clients   map[string]*MockEmailClient
-	createErr error
-	mu        sync.RWMutex
-	callCount int
-}
-
-func NewMockClientFactory() *MockClientFactory {
-	return &MockClientFactory{
-		clients: make(map[string]*MockEmailClient),
-	}
-}
-
-func (m *MockClientFactory) CreateClient(ctx context.Context, account *configpkg.AccountConfig, auth AuthProvider) (EmailClient, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.callCount++
-	
-	if m.createErr != nil {
-		return nil, m.createErr
-	}
-	
-	clientID := fmt.Sprintf("client-%s-%d", account.ID, m.callCount)
-	client := NewMockEmailClient(clientID)
-	m.clients[clientID] = client
-	
-	return client, nil
-}
-
-func (m *MockClientFactory) SetCreateError(err error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.createErr = err
-}
-
-func (m *MockClientFactory) GetCallCount() int {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return m.callCount
-}
-
-func (m *MockClientFactory) GetClient(id string) *MockEmailClient {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return m.clients[id]
-}
+// Removed duplicate MockClientFactory - using the one from client_factory.go
 
 // Test helpers
 func createTestPoolConfig() *PoolConfig {
@@ -278,7 +232,7 @@ func TestConnectionPool_GetConnection(t *testing.T) {
 	config := createTestPoolConfig()
 	credStore := NewMockCredentialStore()
 	authFactory := NewAuthProviderFactory(credStore)
-	clientFactory := NewMockClientFactory()
+	clientFactory := NewMockClientFactory(nil, nil)
 	
 	pool := NewConnectionPool(config, authFactory, clientFactory)
 	
@@ -359,7 +313,7 @@ func TestConnectionPool_ReleaseConnection(t *testing.T) {
 	config := createTestPoolConfig()
 	credStore := NewMockCredentialStore()
 	authFactory := NewAuthProviderFactory(credStore)
-	clientFactory := NewMockClientFactory()
+	clientFactory := NewMockClientFactory(nil, nil)
 	
 	pool := NewConnectionPool(config, authFactory, clientFactory)
 	
@@ -410,7 +364,7 @@ func TestConnectionPool_HealthCheck(t *testing.T) {
 	config := createTestPoolConfig()
 	credStore := NewMockCredentialStore()
 	authFactory := NewAuthProviderFactory(credStore)
-	clientFactory := NewMockClientFactory()
+	clientFactory := NewMockClientFactory(nil, nil)
 	
 	pool := NewConnectionPool(config, authFactory, clientFactory)
 	
@@ -459,7 +413,7 @@ func TestConnectionPool_HealthCheck(t *testing.T) {
 		accountConfig := createTestAccountConfig("test4")
 		
 		// Set up client factory to return clients that fail ping
-		failingFactory := NewMockClientFactory()
+		failingFactory := NewMockClientFactory(nil, nil)
 		failingPool := NewConnectionPool(config, authFactory, failingFactory)
 		
 		if err := failingPool.Start(ctx); err != nil {
@@ -493,7 +447,7 @@ func TestConnectionPool_ConfigUpdate(t *testing.T) {
 	config := createTestPoolConfig()
 	credStore := NewMockCredentialStore()
 	authFactory := NewAuthProviderFactory(credStore)
-	clientFactory := NewMockClientFactory()
+	clientFactory := NewMockClientFactory(nil, nil)
 	
 	pool := NewConnectionPool(config, authFactory, clientFactory)
 	
@@ -564,7 +518,7 @@ func TestConnectionPool_ConcurrentAccess(t *testing.T) {
 	config.MaxConnections = 20  // Increase limit for concurrent test
 	credStore := NewMockCredentialStore()
 	authFactory := NewAuthProviderFactory(credStore)
-	clientFactory := NewMockClientFactory()
+	clientFactory := NewMockClientFactory(nil, nil)
 	
 	pool := NewConnectionPool(config, authFactory, clientFactory)
 	
@@ -641,7 +595,7 @@ func TestConnectionPool_ConnectionReuse(t *testing.T) {
 	
 	credStore := NewMockCredentialStore()
 	authFactory := NewAuthProviderFactory(credStore)
-	clientFactory := NewMockClientFactory()
+	clientFactory := NewMockClientFactory(nil, nil)
 	
 	pool := NewConnectionPool(config, authFactory, clientFactory)
 	
@@ -694,7 +648,7 @@ func TestConnectionPool_ErrorHandling(t *testing.T) {
 	authFactory := NewAuthProviderFactory(credStore)
 	
 	t.Run("client factory error", func(t *testing.T) {
-		clientFactory := NewMockClientFactory()
+		clientFactory := NewMockClientFactory(nil, nil)
 		clientFactory.SetCreateError(NewEmailError(ErrorTypeClient, ErrCodeConnectionFailed, "factory error", nil, false))
 		
 		pool := NewConnectionPool(config, authFactory, clientFactory)
@@ -726,7 +680,7 @@ func TestConnectionPool_ErrorHandling(t *testing.T) {
 			// No IMAP/SMTP config with credentials
 		}
 		
-		clientFactory := NewMockClientFactory()
+		clientFactory := NewMockClientFactory(nil, nil)
 		pool := NewConnectionPool(config, authFactory, clientFactory)
 		
 		if err := pool.Start(ctx); err != nil {
@@ -745,7 +699,7 @@ func TestConnectionPool_ErrorHandling(t *testing.T) {
 		limitedConfig := createTestPoolConfig()
 		limitedConfig.MaxConnections = 1  // Only allow 1 connection
 		
-		clientFactory := NewMockClientFactory()
+		clientFactory := NewMockClientFactory(nil, nil)
 		pool := NewConnectionPool(limitedConfig, authFactory, clientFactory)
 		
 		if err := pool.Start(ctx); err != nil {
@@ -787,7 +741,7 @@ func TestConnectionPool_Stats(t *testing.T) {
 	config := createTestPoolConfig()
 	credStore := NewMockCredentialStore()
 	authFactory := NewAuthProviderFactory(credStore)
-	clientFactory := NewMockClientFactory()
+	clientFactory := NewMockClientFactory(nil, nil)
 	
 	pool := NewConnectionPool(config, authFactory, clientFactory)
 	
@@ -874,7 +828,7 @@ func TestConnectionPool_Cleanup(t *testing.T) {
 	
 	credStore := NewMockCredentialStore()
 	authFactory := NewAuthProviderFactory(credStore)
-	clientFactory := NewMockClientFactory()
+	clientFactory := NewMockClientFactory(nil, nil)
 	
 	pool := NewConnectionPool(config, authFactory, clientFactory)
 	
@@ -925,7 +879,7 @@ func TestConnectionPool_Shutdown(t *testing.T) {
 	config := createTestPoolConfig()
 	credStore := NewMockCredentialStore()
 	authFactory := NewAuthProviderFactory(credStore)
-	clientFactory := NewMockClientFactory()
+	clientFactory := NewMockClientFactory(nil, nil)
 	
 	pool := NewConnectionPool(config, authFactory, clientFactory)
 	
@@ -993,7 +947,7 @@ func TestConnectionPool_AddRemoveAccount(t *testing.T) {
 	config := createTestPoolConfig()
 	credStore := NewMockCredentialStore()
 	authFactory := NewAuthProviderFactory(credStore)
-	clientFactory := NewMockClientFactory()
+	clientFactory := NewMockClientFactory(nil, nil)
 	
 	pool := NewConnectionPool(config, authFactory, clientFactory)
 	
@@ -1076,7 +1030,7 @@ func TestConnectionPool_ConnectionStatus(t *testing.T) {
 	config := createTestPoolConfig()
 	credStore := NewMockCredentialStore()
 	authFactory := NewAuthProviderFactory(credStore)
-	clientFactory := NewMockClientFactory()
+	clientFactory := NewMockClientFactory(nil, nil)
 	
 	pool := NewConnectionPool(config, authFactory, clientFactory)
 	
@@ -1143,7 +1097,7 @@ func TestConnectionPool_CloseConnection(t *testing.T) {
 	config := createTestPoolConfig()
 	credStore := NewMockCredentialStore()
 	authFactory := NewAuthProviderFactory(credStore)
-	clientFactory := NewMockClientFactory()
+	clientFactory := NewMockClientFactory(nil, nil)
 	
 	pool := NewConnectionPool(config, authFactory, clientFactory)
 	
@@ -1193,7 +1147,7 @@ func TestConnectionPool_CloseAll(t *testing.T) {
 	config := createTestPoolConfig()
 	credStore := NewMockCredentialStore()
 	authFactory := NewAuthProviderFactory(credStore)
-	clientFactory := NewMockClientFactory()
+	clientFactory := NewMockClientFactory(nil, nil)
 	
 	pool := NewConnectionPool(config, authFactory, clientFactory)
 	
@@ -1245,7 +1199,7 @@ func TestConnectionPool_EdgeCases(t *testing.T) {
 	config := createTestPoolConfig()
 	credStore := NewMockCredentialStore()
 	authFactory := NewAuthProviderFactory(credStore)
-	clientFactory := NewMockClientFactory()
+	clientFactory := NewMockClientFactory(nil, nil)
 	
 	t.Run("connection validation failure", func(t *testing.T) {
 		pool := NewConnectionPool(config, authFactory, clientFactory)
@@ -1314,7 +1268,7 @@ func BenchmarkConnectionPool_GetConnection(b *testing.B) {
 	config.MaxConnections = 100  // Increase limit for benchmark
 	credStore := NewMockCredentialStore()
 	authFactory := NewAuthProviderFactory(credStore)
-	clientFactory := NewMockClientFactory()
+	clientFactory := NewMockClientFactory(nil, nil)
 	
 	pool := NewConnectionPool(config, authFactory, clientFactory)
 	
@@ -1351,7 +1305,7 @@ func BenchmarkConnectionPool_Stats(b *testing.B) {
 	config := createTestPoolConfig()
 	credStore := NewMockCredentialStore()
 	authFactory := NewAuthProviderFactory(credStore)
-	clientFactory := NewMockClientFactory()
+	clientFactory := NewMockClientFactory(nil, nil)
 	
 	pool := NewConnectionPool(config, authFactory, clientFactory)
 	
@@ -1385,7 +1339,7 @@ func BenchmarkConnectionPool_HealthCheck(b *testing.B) {
 	config := createTestPoolConfig()
 	credStore := NewMockCredentialStore()
 	authFactory := NewAuthProviderFactory(credStore)
-	clientFactory := NewMockClientFactory()
+	clientFactory := NewMockClientFactory(nil, nil)
 	
 	pool := NewConnectionPool(config, authFactory, clientFactory)
 	
