@@ -4,18 +4,20 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/spf13/viper"
 )
 
 // Config represents the application configuration
 type Config struct {
-	App      AppConfig       `yaml:"app" mapstructure:"app"`
-	Accounts []AccountConfig `yaml:"accounts" mapstructure:"accounts"`
-	UI       UIConfig        `yaml:"ui" mapstructure:"ui"`
-	Security SecurityConfig  `yaml:"security" mapstructure:"security"`
-	Performance PerformanceConfig `yaml:"performance" mapstructure:"performance"`
-	Logging  LoggingConfig   `yaml:"logging" mapstructure:"logging"`
+	App         AppConfig           `yaml:"app" mapstructure:"app"`
+	Accounts    []AccountConfig     `yaml:"accounts" mapstructure:"accounts"`
+	Email       EmailConfig         `yaml:"email" mapstructure:"email"`
+	UI          UIConfig            `yaml:"ui" mapstructure:"ui"`
+	Security    SecurityConfig      `yaml:"security" mapstructure:"security"`
+	Performance PerformanceConfig   `yaml:"performance" mapstructure:"performance"`
+	Logging     LoggingConfig       `yaml:"logging" mapstructure:"logging"`
 }
 
 // AppConfig holds general application settings
@@ -25,40 +27,117 @@ type AppConfig struct {
 	DataDir   string `yaml:"data_dir" mapstructure:"data_dir"`
 }
 
+// EmailConfig holds email-specific configuration
+type EmailConfig struct {
+	DefaultAccount      string             `yaml:"default_account" mapstructure:"default_account"`
+	CheckInterval       time.Duration      `yaml:"check_interval" mapstructure:"check_interval"`
+	AutoSync            bool               `yaml:"auto_sync" mapstructure:"auto_sync"`
+	BackgroundSync      bool               `yaml:"background_sync" mapstructure:"background_sync"`
+	ConnectionPool      ConnectionPoolConfig `yaml:"connection_pool" mapstructure:"connection_pool"`
+	MessageCache        MessageCacheConfig   `yaml:"message_cache" mapstructure:"message_cache"`
+	AttachmentLimits    AttachmentLimitsConfig `yaml:"attachment_limits" mapstructure:"attachment_limits"`
+	ErrorRetry          ErrorRetryConfig     `yaml:"error_retry" mapstructure:"error_retry"`
+}
+
+// ConnectionPoolConfig holds connection pool settings
+type ConnectionPoolConfig struct {
+	MaxConnections      int           `yaml:"max_connections" mapstructure:"max_connections"`
+	MaxIdleConnections  int           `yaml:"max_idle_connections" mapstructure:"max_idle_connections"`
+	ConnectionLifetime  time.Duration `yaml:"connection_lifetime" mapstructure:"connection_lifetime"`
+	IdleTimeout         time.Duration `yaml:"idle_timeout" mapstructure:"idle_timeout"`
+	HealthCheckInterval time.Duration `yaml:"health_check_interval" mapstructure:"health_check_interval"`
+	ConnectTimeout      time.Duration `yaml:"connect_timeout" mapstructure:"connect_timeout"`
+}
+
+// MessageCacheConfig holds message caching settings
+type MessageCacheConfig struct {
+	MaxSize         string        `yaml:"max_size" mapstructure:"max_size"`
+	TTL             time.Duration `yaml:"ttl" mapstructure:"ttl"`
+	CleanupInterval time.Duration `yaml:"cleanup_interval" mapstructure:"cleanup_interval"`
+	CacheHeaders    bool          `yaml:"cache_headers" mapstructure:"cache_headers"`
+	CacheBodies     bool          `yaml:"cache_bodies" mapstructure:"cache_bodies"`
+	CacheAttachments bool         `yaml:"cache_attachments" mapstructure:"cache_attachments"`
+}
+
+// AttachmentLimitsConfig holds attachment handling limits
+type AttachmentLimitsConfig struct {
+	MaxSize         string   `yaml:"max_size" mapstructure:"max_size"`
+	AllowedTypes    []string `yaml:"allowed_types,omitempty" mapstructure:"allowed_types"`
+	BlockedTypes    []string `yaml:"blocked_types,omitempty" mapstructure:"blocked_types"`
+	AutoDownload    bool     `yaml:"auto_download" mapstructure:"auto_download"`
+	VirusScan       bool     `yaml:"virus_scan" mapstructure:"virus_scan"`
+}
+
+// ErrorRetryConfig holds error handling and retry settings
+type ErrorRetryConfig struct {
+	MaxRetries       int           `yaml:"max_retries" mapstructure:"max_retries"`
+	BaseDelay        time.Duration `yaml:"base_delay" mapstructure:"base_delay"`
+	MaxDelay         time.Duration `yaml:"max_delay" mapstructure:"max_delay"`
+	Multiplier       float64       `yaml:"multiplier" mapstructure:"multiplier"`
+	JitterEnabled    bool          `yaml:"jitter_enabled" mapstructure:"jitter_enabled"`
+	RetryableErrors  []string      `yaml:"retryable_errors,omitempty" mapstructure:"retryable_errors"`
+}
+
 // AccountConfig represents an email account configuration
 type AccountConfig struct {
-	Name     string      `yaml:"name" mapstructure:"name"`
-	Email    string      `yaml:"email" mapstructure:"email"`
-	Provider string      `yaml:"provider" mapstructure:"provider"`
-	IMAP     IMAPConfig  `yaml:"imap" mapstructure:"imap"`
-	SMTP     SMTPConfig  `yaml:"smtp" mapstructure:"smtp"`
-	OAuth    OAuthConfig `yaml:"oauth" mapstructure:"oauth"`
+	ID       string             `yaml:"id" mapstructure:"id"`
+	Name     string             `yaml:"name" mapstructure:"name"`
+	Email    string             `yaml:"email" mapstructure:"email"`
+	Provider string             `yaml:"provider" mapstructure:"provider"`
+	IMAP     IMAPConfig         `yaml:"imap" mapstructure:"imap"`
+	SMTP     SMTPConfig         `yaml:"smtp" mapstructure:"smtp"`
+	OAuth    *OAuthConfig       `yaml:"oauth,omitempty" mapstructure:"oauth"`
+	Settings *AccountSettings   `yaml:"settings,omitempty" mapstructure:"settings"`
+	Enabled  bool               `yaml:"enabled" mapstructure:"enabled"`
 }
 
 // IMAPConfig holds IMAP server configuration
 type IMAPConfig struct {
-	Host     string `yaml:"host" mapstructure:"host"`
-	Port     int    `yaml:"port" mapstructure:"port"`
-	TLS      bool   `yaml:"tls" mapstructure:"tls"`
-	Username string `yaml:"username" mapstructure:"username"`
+	Host        string        `yaml:"host" mapstructure:"host"`
+	Port        int           `yaml:"port" mapstructure:"port"`
+	TLS         bool          `yaml:"tls" mapstructure:"tls"`
+	StartTLS    bool          `yaml:"starttls" mapstructure:"starttls"`
+	Username    string        `yaml:"username" mapstructure:"username"`
+	Password    string        `yaml:"password,omitempty" mapstructure:"password"`
+	Timeout     time.Duration `yaml:"timeout" mapstructure:"timeout"`
+	KeepAlive   time.Duration `yaml:"keepalive" mapstructure:"keepalive"`
+	UseIdle     bool          `yaml:"use_idle" mapstructure:"use_idle"`
 }
 
 // SMTPConfig holds SMTP server configuration
 type SMTPConfig struct {
-	Host     string `yaml:"host" mapstructure:"host"`
-	Port     int    `yaml:"port" mapstructure:"port"`
-	TLS      bool   `yaml:"tls" mapstructure:"tls"`
-	StartTLS bool   `yaml:"starttls" mapstructure:"starttls"`
-	Username string `yaml:"username" mapstructure:"username"`
+	Host        string        `yaml:"host" mapstructure:"host"`
+	Port        int           `yaml:"port" mapstructure:"port"`
+	TLS         bool          `yaml:"tls" mapstructure:"tls"`
+	StartTLS    bool          `yaml:"starttls" mapstructure:"starttls"`
+	Username    string        `yaml:"username" mapstructure:"username"`
+	Password    string        `yaml:"password,omitempty" mapstructure:"password"`
+	Timeout     time.Duration `yaml:"timeout" mapstructure:"timeout"`
+	RequireTLS  bool          `yaml:"require_tls" mapstructure:"require_tls"`
 }
 
 // OAuthConfig holds OAuth2 configuration
 type OAuthConfig struct {
-	Provider     string `yaml:"provider" mapstructure:"provider"`
-	ClientID     string `yaml:"client_id" mapstructure:"client_id"`
-	ClientSecret string `yaml:"client_secret" mapstructure:"client_secret"`
-	RedirectURI  string `yaml:"redirect_uri" mapstructure:"redirect_uri"`
+	Provider     string   `yaml:"provider" mapstructure:"provider"`
+	ClientID     string   `yaml:"client_id" mapstructure:"client_id"`
+	ClientSecret string   `yaml:"client_secret,omitempty" mapstructure:"client_secret"`
+	RedirectURI  string   `yaml:"redirect_uri" mapstructure:"redirect_uri"`
 	Scopes       []string `yaml:"scopes" mapstructure:"scopes"`
+	AuthURL      string   `yaml:"auth_url,omitempty" mapstructure:"auth_url"`
+	TokenURL     string   `yaml:"token_url,omitempty" mapstructure:"token_url"`
+}
+
+// AccountSettings represents account-specific settings
+type AccountSettings struct {
+	Signature           string        `yaml:"signature,omitempty" mapstructure:"signature"`
+	AutoBCC             []string      `yaml:"auto_bcc,omitempty" mapstructure:"auto_bcc"`
+	SyncInterval        time.Duration `yaml:"sync_interval" mapstructure:"sync_interval"`
+	MaxSyncMessages     int           `yaml:"max_sync_messages" mapstructure:"max_sync_messages"`
+	ComposeFormat       string        `yaml:"compose_format" mapstructure:"compose_format"`
+	AutoMarkRead        bool          `yaml:"auto_mark_read" mapstructure:"auto_mark_read"`
+	DownloadAttachments bool          `yaml:"download_attachments" mapstructure:"download_attachments"`
+	CheckSSLCert        bool          `yaml:"check_ssl_cert" mapstructure:"check_ssl_cert"`
+	FolderMapping       map[string]string `yaml:"folder_mapping,omitempty" mapstructure:"folder_mapping"`
 }
 
 // UIConfig holds user interface configuration
@@ -165,6 +244,53 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("app.cache_dir", getCacheDir())
 	v.SetDefault("app.config_dir", getConfigDir())
 	v.SetDefault("app.data_dir", getDataDir())
+	
+	// Email defaults
+	v.SetDefault("email.check_interval", "5m")
+	v.SetDefault("email.auto_sync", true)
+	v.SetDefault("email.background_sync", true)
+	
+	// Connection pool defaults
+	v.SetDefault("email.connection_pool.max_connections", 5)
+	v.SetDefault("email.connection_pool.max_idle_connections", 2)
+	v.SetDefault("email.connection_pool.connection_lifetime", "30m")
+	v.SetDefault("email.connection_pool.idle_timeout", "5m")
+	v.SetDefault("email.connection_pool.health_check_interval", "1m")
+	v.SetDefault("email.connection_pool.connect_timeout", "30s")
+	
+	// Message cache defaults
+	v.SetDefault("email.message_cache.max_size", "100MB")
+	v.SetDefault("email.message_cache.ttl", "24h")
+	v.SetDefault("email.message_cache.cleanup_interval", "1h")
+	v.SetDefault("email.message_cache.cache_headers", true)
+	v.SetDefault("email.message_cache.cache_bodies", true)
+	v.SetDefault("email.message_cache.cache_attachments", false)
+	
+	// Attachment limits defaults
+	v.SetDefault("email.attachment_limits.max_size", "25MB")
+	v.SetDefault("email.attachment_limits.auto_download", false)
+	v.SetDefault("email.attachment_limits.virus_scan", false)
+	
+	// Error retry defaults
+	v.SetDefault("email.error_retry.max_retries", 3)
+	v.SetDefault("email.error_retry.base_delay", "1s")
+	v.SetDefault("email.error_retry.max_delay", "1m")
+	v.SetDefault("email.error_retry.multiplier", 2.0)
+	v.SetDefault("email.error_retry.jitter_enabled", true)
+	
+	// Account defaults
+	v.SetDefault("accounts.enabled", true)
+	v.SetDefault("accounts.imap.timeout", "30s")
+	v.SetDefault("accounts.imap.keepalive", "5m")
+	v.SetDefault("accounts.imap.use_idle", true)
+	v.SetDefault("accounts.smtp.timeout", "30s")
+	v.SetDefault("accounts.smtp.require_tls", true)
+	v.SetDefault("accounts.settings.sync_interval", "5m")
+	v.SetDefault("accounts.settings.max_sync_messages", 1000)
+	v.SetDefault("accounts.settings.compose_format", "text")
+	v.SetDefault("accounts.settings.auto_mark_read", false)
+	v.SetDefault("accounts.settings.download_attachments", false)
+	v.SetDefault("accounts.settings.check_ssl_cert", true)
 	
 	// UI defaults
 	v.SetDefault("ui.theme", "default")
