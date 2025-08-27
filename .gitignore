@@ -1,0 +1,135 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+coverage.out
+coverage.html
+coverage_*.out
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Build directories and binaries
+build/
+bin/
+dist/
+pombo
+pombo.exe
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Backup files
+*.backup
+*.bak
+*.tmp
+
+# Log files
+*.log
+logs/
+
+# Cache and temporary directories
+.cache/
+tmp/
+temp/
+
+# Configuration files (may contain sensitive data)
+config.yaml
+config.yml
+*.env
+.env
+.env.local
+
+# Data directories
+data/
+cache/
+*.db
+*.sqlite
+*.sqlite3
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Testing artifacts
+test_output/
+test_results/
+benchmark_results/
+
+# Documentation build artifacts
+docs/build/
+site/
+
+# Security and credentials
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+secrets/
+credentials/
+
+# Profiling files
+cpu.prof
+mem.prof
+profile.out
+trace.out
+
+# Debug files
+debug
+debug.test
+__debug_bin
+
+# Air (live reload) temporary files
+tmp/
+.air/
+
+# GoReleaser dist directory
+dist/
+
+# Dependency management
+Gopkg.lock
+glide.lock
+
+# POMBO-specific ignores
+# Email cache and data
+~/.cache/pombo/
+~/.config/pombo/config.yaml
+~/.local/share/pombo/
+
+# OAuth tokens and credentials (should never be committed)
+tokens/
+oauth_cache/
+.pombo_tokens
+
+# Development and testing artifacts
+test_accounts.yaml
+demo_data/
+mock_responses/
+
+# Performance test results
+benchmarks/
+performance_*.out
